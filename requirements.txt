@@ -8,10 +8,10 @@ python-docx>=0.8.11
 scipy>=1.7.0
 
 # NLP libraries - compatible versions
-sentence-transformers==2.2.2
 transformers==4.30.2
-huggingface_hub>=0.10.1
-tokenizers>=0.10.0
+sentence-transformers==2.2.2
+huggingface_hub==0.16.4
+tokenizers==0.13.3
 
 # PyTorch for Python 3.12
 torch>=2.2.0
