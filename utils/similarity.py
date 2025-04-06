@@ -26,12 +26,12 @@ model = None
 
 try:
     from sentence_transformers import SentenceTransformer, util
-    # Use a lightweight and cloud-compatible model
-    model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
-    print("✅ Loaded transformer model: paraphrase-MiniLM-L6-v2")
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    print("✅ Loaded transformer model: sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
     print(f"⚠️ Failed to load transformer model: {e}")
     USE_TRANSFORMERS = False
+
 
 
 def clean_text(text, remove_stopwords=False):
