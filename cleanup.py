@@ -1,7 +1,7 @@
 import os
 import shutil
 
-model_dir = ".cache/sentence-transformers/all-MiniLM-L6-v2"
+model_dir = "sentence-transformers/all-MiniLM-L6-v2"
 
 # Files to KEEP
 keep_files = {
