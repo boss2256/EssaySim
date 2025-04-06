@@ -57,7 +57,7 @@ def encode_sentence(text):
     # Fallback to TF-IDF
     return document_vectorizer.fit_transform([text])
 
-
+"""
 def calculate_similarity(text1, text2):
     global USE_TRANSFORMERS, model, util
 
@@ -76,6 +76,23 @@ def calculate_similarity(text1, text2):
     tfidf_matrix = document_vectorizer.fit_transform([text1, text2])
     similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
     return float(similarity)
+"""
+
+def calculate_similarity(text1, text2):
+    global USE_TRANSFORMERS, model, util
+
+    if USE_TRANSFORMERS and model is not None:
+        try:
+            emb1 = encode_sentence(text1)
+            emb2 = encode_sentence(text2)
+            score = util.cos_sim(emb1, emb2).item()
+            print("✅ Transformer similarity used")
+            return score
+        except Exception as e:
+            print(f"❌ Transformer failed: {e}")
+            raise RuntimeError("Transformer model failed. TF-IDF is disabled.")
+
+    raise RuntimeError("Transformer model not available. TF-IDF is disabled.")
 
 
 def word_level_contribution(text1, text2, remove_stopwords=False):
