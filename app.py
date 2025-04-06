@@ -10,7 +10,7 @@ import seaborn as sns
 import numpy as np
 
 st.set_page_config(
-    page_title="EssaySimScore",
+    page_title="EssaySim",
     page_icon="🧠",
     layout="centered"
 )
@@ -240,7 +240,7 @@ if text1.strip() and text2.strip():
             # Downloadable Report
             st.markdown("### 📥 Download Report")
             report = f"""
-EssaySimScore Report
+EssaySim Report
 
 Text 1:
 {text1}
