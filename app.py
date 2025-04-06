@@ -16,6 +16,7 @@ st.set_page_config(
 
 os.environ['TRANSFORMERS_CACHE'] = 'sentence-transformers'
 os.environ['HF_HOME'] = 'sentence-transformers'
+os.environ['TRANSFORMERS_OFFLINE'] = '1'
 
 
 st.title("📝 EssaySimScore")
