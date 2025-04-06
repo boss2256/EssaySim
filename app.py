@@ -2,8 +2,8 @@
 import os
 
 # 👇 Ensure HF uses the offline model from cache
-#os.environ["TRANSFORMERS_CACHE"] = ".cache"
-#os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_CACHE"] = ".cache"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 from utils.similarity import calculate_similarity, word_level_contribution
 from docx import Document
