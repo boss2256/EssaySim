@@ -14,6 +14,10 @@ st.set_page_config(
     layout="centered"
 )
 
+os.environ['TRANSFORMERS_CACHE'] = 'sentence-transformers'
+os.environ['HF_HOME'] = 'sentence-transformers'
+
+
 st.title("📝 EssaySimScore")
 st.subheader("Check semantic similarity between two texts")
 

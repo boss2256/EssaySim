@@ -13,7 +13,7 @@ except:
     stop_words = set(stopwords.words('english'))
 
 # Load the transformer model only
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 print("✅ Loaded transformer model: sentence-transformers/all-MiniLM-L6-v2")
 
 def clean_text(text, remove_stopwords=False):
