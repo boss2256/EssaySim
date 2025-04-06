@@ -9,6 +9,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
+# Apply the huggingface_hub patch before importing sentence-transformers
+try:
+    import utils.huggingface_patch
+except Exception as e:
+    st.error(f"Error applying huggingface_hub patch: {e}")
+
 st.set_page_config(
     page_title="EssaySim",
     page_icon="🧠",
