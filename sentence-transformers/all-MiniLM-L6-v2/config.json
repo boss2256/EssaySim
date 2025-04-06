@@ -1,5 +1,5 @@
 {
-  "_name_or_path": "C:\\Users\\nasru/.cache\\torch\\sentence_transformers\\sentence-transformers_all-MiniLM-L6-v2\\",
+  "_name_or_path": "sentence-transformers/all-MiniLM-L6-v2\\",
   "architectures": [
     "BertModel"
   ],
