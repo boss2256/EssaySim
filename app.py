@@ -8,16 +8,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 
+# Prevent HuggingFace from downloading models online
+os.environ['TRANSFORMERS_OFFLINE'] = '1'
+os.environ['HF_HOME'] = './sentence-transformers'
+
 st.set_page_config(
     page_title="EssaySimScore",
     page_icon="🧠",
     layout="centered"
 )
-
-os.environ['TRANSFORMERS_CACHE'] = 'sentence-transformers'
-os.environ['HF_HOME'] = 'sentence-transformers'
-os.environ['TRANSFORMERS_OFFLINE'] = '1'
-
 
 st.title("📝 EssaySimScore")
 st.subheader("Check semantic similarity between two texts")
