@@ -73,8 +73,8 @@ try:
         # Try to use a smaller model for faster loading/less memory
         try:
             # Try to load the model with offline mode first to use cached version
-            model = SentenceTransformer("paraphrase-MiniLM-L6-v2", device="cpu")
-            print("Using paraphrase-MiniLM-L6-v2 model")
+            model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu", cache_folder=".cache")
+            print("Using all-MiniLM-L6-v2 model")
         except:
             try:
                 # If that fails, try a different small model

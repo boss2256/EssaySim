@@ -1,13 +1,19 @@
 # app.py
-import streamlit as st
+import os
+
+# 👇 Ensure HF uses the offline model from cache
+os.environ["TRANSFORMERS_CACHE"] = ".cache"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
 from utils.similarity import calculate_similarity, word_level_contribution
 from docx import Document
 from io import BytesIO
-import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import streamlit as st
+
 
 
 st.set_page_config(
