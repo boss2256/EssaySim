@@ -14,8 +14,15 @@ except:
     nltk.download('stopwords')
     stop_words = set(stopwords.words('english'))
 
-# Define a flag to control which implementation to use
+# Define a flag to control which implementation to use as a global variable
 USE_TRANSFORMERS = True
+
+# Setup TF-IDF vectorizers for fallback
+document_vectorizer = TfidfVectorizer(stop_words='english')
+word_vectorizer = TfidfVectorizer(ngram_range=(1, 1))
+
+# Setup the transformer model
+model = None
 
 try:
     if USE_TRANSFORMERS:
@@ -86,12 +93,6 @@ except Exception as e:
     print(f"Error initializing transformers: {e}")
     USE_TRANSFORMERS = False
 
-# If transformers failed to load, set up TF-IDF vectorizer as fallback
-if not USE_TRANSFORMERS:
-    print("Using TF-IDF vectorizer as fallback")
-    document_vectorizer = TfidfVectorizer(stop_words='english')
-    word_vectorizer = TfidfVectorizer(ngram_range=(1, 1))
-
 
 def clean_text(text, remove_stopwords=False):
     text = text.lower()
@@ -103,15 +104,23 @@ def clean_text(text, remove_stopwords=False):
 
 
 def encode_sentence(text):
-    if USE_TRANSFORMERS:
-        return model.encode(text, convert_to_tensor=True)
-    else:
-        # Fallback to TF-IDF
-        return document_vectorizer.fit_transform([text])
+    global USE_TRANSFORMERS, model
+
+    if USE_TRANSFORMERS and model is not None:
+        try:
+            return model.encode(text, convert_to_tensor=True)
+        except Exception as e:
+            print(f"Error encoding with transformer: {e}")
+            USE_TRANSFORMERS = False
+
+    # Fallback to TF-IDF
+    return document_vectorizer.fit_transform([text])
 
 
 def calculate_similarity(text1, text2):
-    if USE_TRANSFORMERS:
+    global USE_TRANSFORMERS, model, util
+
+    if USE_TRANSFORMERS and model is not None:
         try:
             emb1 = encode_sentence(text1)
             emb2 = encode_sentence(text2)
@@ -120,17 +129,17 @@ def calculate_similarity(text1, text2):
         except Exception as e:
             print(f"Error in transformer similarity: {e}")
             # Fall back to TF-IDF if transformer fails
-            global USE_TRANSFORMERS
             USE_TRANSFORMERS = False
-            return calculate_similarity(text1, text2)
-    else:
-        # TF-IDF similarity approach
-        tfidf_matrix = document_vectorizer.fit_transform([text1, text2])
-        similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
-        return float(similarity)
+
+    # TF-IDF similarity approach
+    tfidf_matrix = document_vectorizer.fit_transform([text1, text2])
+    similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+    return float(similarity)
 
 
 def word_level_contribution(text1, text2, remove_stopwords=False):
+    global USE_TRANSFORMERS, model, util
+
     words1 = clean_text(text1, remove_stopwords)
     words2 = clean_text(text2, remove_stopwords)
 
@@ -153,7 +162,7 @@ def word_level_contribution(text1, text2, remove_stopwords=False):
 
     contrib_scores = []
 
-    if USE_TRANSFORMERS:
+    if USE_TRANSFORMERS and model is not None:
         try:
             # Performance optimization: batch encode words
             # Batch encode all words at once (much faster than one-by-one)
@@ -177,10 +186,11 @@ def word_level_contribution(text1, text2, remove_stopwords=False):
             contrib_scores = sorted(contrib_scores, key=lambda x: x[2], reverse=True)
         except Exception as e:
             print(f"Error in transformer word contribution: {e}")
-            global USE_TRANSFORMERS
             USE_TRANSFORMERS = False
-            return word_level_contribution(text1, text2, remove_stopwords)
-    else:
+            # Continue with TF-IDF approach below
+
+    # If transformer approach failed or is disabled, use TF-IDF
+    if not USE_TRANSFORMERS or model is None or not contrib_scores:
         # TF-IDF fallback for word-level contributions
         # Prepare all unique words for the vectorizer
         all_words = list(set(words1 + words2))
