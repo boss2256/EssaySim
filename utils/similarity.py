@@ -25,72 +25,12 @@ word_vectorizer = TfidfVectorizer(ngram_range=(1, 1))
 model = None
 
 try:
-    if USE_TRANSFORMERS:
-        # Apply patch for huggingface_hub before importing sentence_transformers
-        import sys
-        import importlib.util
-
-        # Check if huggingface_hub is installed
-        if importlib.util.find_spec("huggingface_hub") is not None:
-            import huggingface_hub
-
-            # Check if cached_download is missing
-            if not hasattr(huggingface_hub, 'cached_download'):
-                # Add the function
-                def cached_download(*args, **kwargs):
-                    # Use the newer API function
-                    from huggingface_hub import hf_hub_download
-                    # Map old API to new API
-                    if len(args) > 0:
-                        # First arg was the URL in old API
-                        if 'repo_id' not in kwargs and 'filename' not in kwargs:
-                            # Try to parse the URL to extract repo_id and filename
-                            try:
-                                from urllib.parse import urlparse
-                                url = args[0]
-                                parsed = urlparse(url)
-                                path_parts = parsed.path.strip('/').split('/')
-                                if len(path_parts) >= 3 and path_parts[0] == 'huggingface-hub':
-                                    kwargs['repo_id'] = path_parts[1]
-                                    kwargs['filename'] = '/'.join(path_parts[2:])
-                            except:
-                                pass
-                    # If cache_dir was provided as positional arg
-                    if len(args) > 1 and 'cache_dir' not in kwargs:
-                        kwargs['cache_dir'] = args[1]
-                    return hf_hub_download(**kwargs)
-
-
-                # Add to the huggingface_hub module
-                huggingface_hub.cached_download = cached_download
-                # Make it available at module level for direct imports
-                sys.modules['huggingface_hub'].cached_download = cached_download
-                print("Added cached_download to huggingface_hub")
-
-        # Import sentence_transformers and setup the model
-        from sentence_transformers import SentenceTransformer, util
-
-        # Try to use a smaller model for faster loading/less memory
-        try:
-            # Try to load the model with offline mode first to use cached version
-            model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu", cache_folder=".cache")
-            print("Using all-MiniLM-L6-v2 model")
-        except:
-            try:
-                # If that fails, try a different small model
-                model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
-                print("Using all-MiniLM-L6-v2 model")
-            except:
-                # Fall back to the original model as last resort
-                try:
-                    model = SentenceTransformer("all-mpnet-base-v2", device="cpu")
-                    print("Using all-mpnet-base-v2 model")
-                except Exception as e:
-                    print(f"Error loading transformer model: {e}")
-                    # If all transformer models fail, disable transformers
-                    USE_TRANSFORMERS = False
+    from sentence_transformers import SentenceTransformer, util
+    # Use a lightweight and cloud-compatible model
+    model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
+    print("✅ Loaded transformer model: paraphrase-MiniLM-L6-v2")
 except Exception as e:
-    print(f"Error initializing transformers: {e}")
+    print(f"⚠️ Failed to load transformer model: {e}")
     USE_TRANSFORMERS = False
 
 
