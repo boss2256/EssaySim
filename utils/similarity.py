@@ -1,52 +1,11 @@
 # utils/similarity.py
-
-# Apply patch for huggingface_hub before importing sentence_transformers
-import sys
-import importlib.util
-
-# Check if huggingface_hub is installed
-if importlib.util.find_spec("huggingface_hub") is not None:
-    import huggingface_hub
-
-    # Check if cached_download is missing
-    if not hasattr(huggingface_hub, 'cached_download'):
-        # Add the function
-        def cached_download(*args, **kwargs):
-            # Use the newer API function
-            from huggingface_hub import hf_hub_download
-            # Map old API to new API
-            if len(args) > 0:
-                # First arg was the URL in old API
-                if 'repo_id' not in kwargs and 'filename' not in kwargs:
-                    # Try to parse the URL to extract repo_id and filename
-                    try:
-                        from urllib.parse import urlparse
-                        url = args[0]
-                        parsed = urlparse(url)
-                        path_parts = parsed.path.strip('/').split('/')
-                        if len(path_parts) >= 3 and path_parts[0] == 'huggingface-hub':
-                            kwargs['repo_id'] = path_parts[1]
-                            kwargs['filename'] = '/'.join(path_parts[2:])
-                    except:
-                        pass
-            # If cache_dir was provided as positional arg
-            if len(args) > 1 and 'cache_dir' not in kwargs:
-                kwargs['cache_dir'] = args[1]
-            return hf_hub_download(**kwargs)
-
-
-        # Add to the huggingface_hub module
-        huggingface_hub.cached_download = cached_download
-        # Make it available at module level for direct imports
-        sys.modules['huggingface_hub'].cached_download = cached_download
-        print("Added cached_download to huggingface_hub")
-
-# Now import sentence_transformers
-from sentence_transformers import SentenceTransformer, util
+import os
 import numpy as np
 import re
-from nltk.corpus import stopwords
 import nltk
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Download stopwords if not already downloaded
 try:
@@ -55,8 +14,83 @@ except:
     nltk.download('stopwords')
     stop_words = set(stopwords.words('english'))
 
-# Load SBERT model once
-model = SentenceTransformer("all-mpnet-base-v2")
+# Define a flag to control which implementation to use
+USE_TRANSFORMERS = True
+
+try:
+    if USE_TRANSFORMERS:
+        # Apply patch for huggingface_hub before importing sentence_transformers
+        import sys
+        import importlib.util
+
+        # Check if huggingface_hub is installed
+        if importlib.util.find_spec("huggingface_hub") is not None:
+            import huggingface_hub
+
+            # Check if cached_download is missing
+            if not hasattr(huggingface_hub, 'cached_download'):
+                # Add the function
+                def cached_download(*args, **kwargs):
+                    # Use the newer API function
+                    from huggingface_hub import hf_hub_download
+                    # Map old API to new API
+                    if len(args) > 0:
+                        # First arg was the URL in old API
+                        if 'repo_id' not in kwargs and 'filename' not in kwargs:
+                            # Try to parse the URL to extract repo_id and filename
+                            try:
+                                from urllib.parse import urlparse
+                                url = args[0]
+                                parsed = urlparse(url)
+                                path_parts = parsed.path.strip('/').split('/')
+                                if len(path_parts) >= 3 and path_parts[0] == 'huggingface-hub':
+                                    kwargs['repo_id'] = path_parts[1]
+                                    kwargs['filename'] = '/'.join(path_parts[2:])
+                            except:
+                                pass
+                    # If cache_dir was provided as positional arg
+                    if len(args) > 1 and 'cache_dir' not in kwargs:
+                        kwargs['cache_dir'] = args[1]
+                    return hf_hub_download(**kwargs)
+
+
+                # Add to the huggingface_hub module
+                huggingface_hub.cached_download = cached_download
+                # Make it available at module level for direct imports
+                sys.modules['huggingface_hub'].cached_download = cached_download
+                print("Added cached_download to huggingface_hub")
+
+        # Import sentence_transformers and setup the model
+        from sentence_transformers import SentenceTransformer, util
+
+        # Try to use a smaller model for faster loading/less memory
+        try:
+            # Try to load the model with offline mode first to use cached version
+            model = SentenceTransformer("paraphrase-MiniLM-L6-v2", device="cpu")
+            print("Using paraphrase-MiniLM-L6-v2 model")
+        except:
+            try:
+                # If that fails, try a different small model
+                model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+                print("Using all-MiniLM-L6-v2 model")
+            except:
+                # Fall back to the original model as last resort
+                try:
+                    model = SentenceTransformer("all-mpnet-base-v2", device="cpu")
+                    print("Using all-mpnet-base-v2 model")
+                except Exception as e:
+                    print(f"Error loading transformer model: {e}")
+                    # If all transformer models fail, disable transformers
+                    USE_TRANSFORMERS = False
+except Exception as e:
+    print(f"Error initializing transformers: {e}")
+    USE_TRANSFORMERS = False
+
+# If transformers failed to load, set up TF-IDF vectorizer as fallback
+if not USE_TRANSFORMERS:
+    print("Using TF-IDF vectorizer as fallback")
+    document_vectorizer = TfidfVectorizer(stop_words='english')
+    word_vectorizer = TfidfVectorizer(ngram_range=(1, 1))
 
 
 def clean_text(text, remove_stopwords=False):
@@ -69,14 +103,31 @@ def clean_text(text, remove_stopwords=False):
 
 
 def encode_sentence(text):
-    return model.encode(text, convert_to_tensor=True)
+    if USE_TRANSFORMERS:
+        return model.encode(text, convert_to_tensor=True)
+    else:
+        # Fallback to TF-IDF
+        return document_vectorizer.fit_transform([text])
 
 
 def calculate_similarity(text1, text2):
-    emb1 = encode_sentence(text1)
-    emb2 = encode_sentence(text2)
-    score = util.cos_sim(emb1, emb2).item()
-    return score
+    if USE_TRANSFORMERS:
+        try:
+            emb1 = encode_sentence(text1)
+            emb2 = encode_sentence(text2)
+            score = util.cos_sim(emb1, emb2).item()
+            return score
+        except Exception as e:
+            print(f"Error in transformer similarity: {e}")
+            # Fall back to TF-IDF if transformer fails
+            global USE_TRANSFORMERS
+            USE_TRANSFORMERS = False
+            return calculate_similarity(text1, text2)
+    else:
+        # TF-IDF similarity approach
+        tfidf_matrix = document_vectorizer.fit_transform([text1, text2])
+        similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+        return float(similarity)
 
 
 def word_level_contribution(text1, text2, remove_stopwords=False):
@@ -96,63 +147,71 @@ def word_level_contribution(text1, text2, remove_stopwords=False):
             words2) // 2 + max_words // 6] + words2[-max_words // 3:]
         words2 = words2_sample
 
-    # Performance optimization: batch encode words
-    try:
-        # Filter out very short words before encoding
-        words1 = [w for w in words1 if len(w) >= 3]  # Increased minimum word length for performance
-        words2 = [w for w in words2 if len(w) >= 3]
+    # Filter out very short words before encoding
+    words1 = [w for w in words1 if len(w) >= 3]  # Increased minimum word length for performance
+    words2 = [w for w in words2 if len(w) >= 3]
 
-        # Batch encode all words at once (much faster than one-by-one)
-        embeddings1 = model.encode(words1, convert_to_tensor=True)
-        embeddings2 = model.encode(words2, convert_to_tensor=True)
+    contrib_scores = []
 
-        # Calculate similarity matrix (all word pairs at once)
-        sim_matrix = util.cos_sim(embeddings1, embeddings2)
+    if USE_TRANSFORMERS:
+        try:
+            # Performance optimization: batch encode words
+            # Batch encode all words at once (much faster than one-by-one)
+            embeddings1 = model.encode(words1, convert_to_tensor=True)
+            embeddings2 = model.encode(words2, convert_to_tensor=True)
 
-        contrib_scores = []
-        # Get best match for each word
-        for i, w1 in enumerate(words1):
-            # Get best matching word index
-            best_idx = sim_matrix[i].argmax().item()
-            sim_score = sim_matrix[i][best_idx].item()
+            # Calculate similarity matrix (all word pairs at once)
+            sim_matrix = util.cos_sim(embeddings1, embeddings2)
+
+            # Get best match for each word
+            for i, w1 in enumerate(words1):
+                # Get best matching word index
+                best_idx = sim_matrix[i].argmax().item()
+                sim_score = sim_matrix[i][best_idx].item()
+
+                # Only add matches above a minimum threshold
+                if sim_score > 0.3:  # Only include reasonably related words
+                    contrib_scores.append((w1, words2[best_idx], sim_score))
+
+            # Sort by similarity score (highest first)
+            contrib_scores = sorted(contrib_scores, key=lambda x: x[2], reverse=True)
+        except Exception as e:
+            print(f"Error in transformer word contribution: {e}")
+            global USE_TRANSFORMERS
+            USE_TRANSFORMERS = False
+            return word_level_contribution(text1, text2, remove_stopwords)
+    else:
+        # TF-IDF fallback for word-level contributions
+        # Prepare all unique words for the vectorizer
+        all_words = list(set(words1 + words2))
+        # Fit vectorizer on all words
+        word_vectorizer.fit([" ".join(all_words)])
+
+        # Get word vectors once for efficiency
+        word_vectors1 = {w: word_vectorizer.transform([w]) for w in words1}
+        word_vectors2 = {w: word_vectorizer.transform([w]) for w in words2}
+
+        for w1 in words1:
+            best_match = ("", 0.0)
+            v1 = word_vectors1[w1]
+
+            for w2 in words2:
+                # Calculate similarity - identical words have score of 1.0
+                if w1 == w2:
+                    sim = 1.0
+                else:
+                    v2 = word_vectors2[w2]
+                    sim = cosine_similarity(v1, v2)[0][0]
+
+                if sim > best_match[1]:
+                    best_match = (w2, sim)
 
             # Only add matches above a minimum threshold
-            if sim_score > 0.3:  # Only include reasonably related words
-                contrib_scores.append((w1, words2[best_idx], sim_score))
+            if best_match[1] > 0.3:  # Only include reasonably related words
+                contrib_scores.append((w1, best_match[0], float(best_match[1])))
 
         # Sort by similarity score (highest first)
         contrib_scores = sorted(contrib_scores, key=lambda x: x[2], reverse=True)
-
-    except Exception as e:
-        print(f"Error in batch processing: {e}")
-        # Fallback to slower method if batch processing fails
-        contrib_scores = []
-        for w1 in words1:
-            # Skip very short words
-            if len(w1) < 3:
-                continue
-
-            try:
-                e1 = model.encode(w1, convert_to_tensor=True)
-                best_match = (words2[0] if words2 else "", 0)
-
-                for w2 in words2:
-                    if len(w2) < 3:
-                        continue
-
-                    try:
-                        e2 = model.encode(w2, convert_to_tensor=True)
-                        sim = util.cos_sim(e1, e2).item()
-                        if sim > best_match[1]:
-                            best_match = (w2, sim)
-                    except:
-                        continue
-
-                if best_match[1] > 0.3:
-                    contrib_scores.append((w1, best_match[0], best_match[1]))
-
-            except:
-                continue
 
     # Ensure we have at least some results
     if not contrib_scores and words1 and words2:
