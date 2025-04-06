@@ -27,7 +27,7 @@ model = None
 try:
     from sentence_transformers import SentenceTransformer, util
     #model = SentenceTransformer("all-MiniLM-L6-v2")
-    model = SentenceTransformer(".cache/sentence-transformers_all-MiniLM-L6-v2")
+    model = SentenceTransformer(".cache/sentence-transformers/all-MiniLM-L6-v2")
     print("✅ Loaded transformer model: sentence-transformers/all-MiniLM-L6-v2")
 except Exception as e:
     print(f"⚠️ Failed to load transformer model: {e}")
