@@ -7,9 +7,13 @@ scikit-learn>=1.0.0
 python-docx>=0.8.11
 scipy>=1.7.0
 
-# Optional NLP libraries - will use scikit-learn as fallback if these fail
-sentence-transformers==2.2.2
-transformers==4.25.1
-tokenizers>=0.13.3,<0.15
-huggingface_hub==0.14.1
-torch==2.2.0
+# Core NLP libraries
+sentence-transformers==2.2.2  # Keeping this pinned as it's central
+torch==2.2.0                 # Keeping this pinned
+
+# Allow newer versions compatible with sentence-transformers and torch
+transformers                 # <-- REMOVED version pin
+huggingface_hub              # <-- REMOVED version pin
+
+# REMOVED the following line entirely:
+# tokenizers>=0.13.3,<0.15
