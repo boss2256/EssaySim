@@ -141,25 +141,48 @@ Word-by-word Contributions:
             buffer.seek(0)
             st.download_button("📄 Download .txt Report", buffer, file_name="similarity_report.txt", mime="text/plain")
 
+            # app.py (Modified Heatmap Block)
+
             # ✅ Heatmap visualization block
             st.markdown("### 📊 Heatmap of Similarity Scores")
             try:
+                # Limit the number of pairs for the heatmap for readability
                 heatmap_limit = min(20, len(contributions))
-                heatmap_data = pd.DataFrame(contributions[:heatmap_limit], columns=["Word 1", "Word 2", "Score"])
-
-                heatmap_data['Word 1'] = heatmap_data['Word 1'].apply(lambda x, c={}: f"{x}_{c.setdefault(x, 0)}" if x in c else x)
-                heatmap_data['Word 2'] = heatmap_data['Word 2'].apply(lambda x, c={}: f"{x}_{c.setdefault(x, 0)}" if x in c else x)
-
-                pivot = heatmap_data.pivot(index="Word 1", columns="Word 2", values="Score")
-
-                if pivot.shape[0] >= 2 and pivot.shape[1] >= 2:
-                    fig, ax = plt.subplots(figsize=(10, 8))
-                    sns.heatmap(pivot, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax)
-                    st.pyplot(fig)
+                if heatmap_limit < 2:  # Need at least 2 pairs for a meaningful pivot
+                    st.info("Not enough contribution pairs (need at least 2) for a heatmap.")
                 else:
-                    st.info("Not enough unique word pairs for a meaningful heatmap.")
+                    heatmap_data = pd.DataFrame(contributions[:heatmap_limit], columns=["Word 1", "Word 2", "Score"])
+
+                    # --- CHANGE START ---
+                    # Use pivot_table which can handle duplicate index/column entries
+                    # 'aggfunc='first'' takes the score from the first occurrence if duplicates exist
+                    # (since the list is sorted by score descending, this is often the highest score for that pair)
+                    # You could also use 'mean' or 'max' if preferred.
+                    pivot_df = heatmap_data.pivot_table(index="Word 1", columns="Word 2", values="Score",
+                                                        aggfunc='first')
+                    # --- CHANGE END ---
+
+                    # Ensure the pivoted table has enough dimensions for a heatmap
+                    if pivot_df.shape[0] >= 1 and pivot_df.shape[1] >= 1:  # Allow 1xN or Nx1 heatmaps too
+                        # Adjust figsize dynamically? Maybe later. Start with fixed.
+                        fig_height = max(5, pivot_df.shape[0] * 0.5)
+                        fig_width = max(6, pivot_df.shape[1] * 0.6)
+                        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+                        sns.heatmap(pivot_df, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax, linewidths=.5)
+                        plt.xticks(rotation=45, ha='right')  # Improve label readability
+                        plt.yticks(rotation=0)
+                        plt.tight_layout()  # Adjust layout to prevent labels overlapping
+                        st.pyplot(fig)
+                    else:
+                        st.info(
+                            f"Could not create a meaningful heatmap. Pivoted shape: {pivot_df.shape}. Need at least 1 row and 1 column after pivoting.")
+
             except Exception as e:
-                st.warning(f"Heatmap failed to render: {e}")
+                # Print the specific error to the console/log for debugging
+                print(f"Heatmap generation error: {e}")
+                # Provide a more user-friendly message in the app
+                st.warning(f"Could not generate heatmap. Error: {e}")
 
         else:
             st.warning("_No significant word-level contributions detected. Try using shorter, more focused texts._")
