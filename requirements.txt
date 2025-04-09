@@ -7,12 +7,9 @@ scikit-learn>=1.0.0
 python-docx>=0.8.11
 scipy>=1.7.0
 
-# Core NLP libraries
-sentence-transformers==2.2.2  # Keeping this pinned
-torch==2.2.0                 # Keeping this pinned
+# Core NLP libraries - Use LATEST compatible versions
+sentence-transformers  # <-- UNPINNED - Let pip find the latest stable
+torch==2.2.0         # <-- Keep pinned for now
 
-# Allow newer transformers, but pin huggingface_hub to version compatible with sentence-transformers 2.2.2
-transformers                 # Keep UNPINNED - let it find one compatible with SBERT 2.2.2
-huggingface_hub==0.14.1      # <-- RE-PINNED to the older compatible version
-
-# REMOVED the explicit tokenizers line - transformers will handle it
+transformers          # <-- Keep unpinned
+huggingface_hub       # <-- Keep unpinned
