@@ -8,12 +8,11 @@ python-docx>=0.8.11
 scipy>=1.7.0
 
 # Core NLP libraries
-sentence-transformers==2.2.2  # Keeping this pinned as it's central
+sentence-transformers==2.2.2  # Keeping this pinned
 torch==2.2.0                 # Keeping this pinned
 
-# Allow newer versions compatible with sentence-transformers and torch
-transformers                 # <-- REMOVED version pin
-huggingface_hub              # <-- REMOVED version pin
+# Allow newer transformers, but pin huggingface_hub to version compatible with sentence-transformers 2.2.2
+transformers                 # Keep UNPINNED - let it find one compatible with SBERT 2.2.2
+huggingface_hub==0.14.1      # <-- RE-PINNED to the older compatible version
 
-# REMOVED the following line entirely:
-# tokenizers>=0.13.3,<0.15
+# REMOVED the explicit tokenizers line - transformers will handle it
